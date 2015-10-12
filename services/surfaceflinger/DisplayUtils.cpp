@@ -40,6 +40,8 @@
 #include "RenderEngine/RenderEngine.h"
 #include "DisplayHardware/FramebufferSurface.h"
 #include "DisplayUtils.h"
+
+#if QTI_BSP
 #include <ExSurfaceFlinger/ExSurfaceFlinger.h>
 #include <ExSurfaceFlinger/ExLayer.h>
 #include <ExSurfaceFlinger/ExHWComposer.h>
@@ -73,6 +75,7 @@ DisplayUtils* DisplayUtils::getInstance() {
 }
 
 SurfaceFlinger* DisplayUtils::getSFInstance() {
+#ifdef QTI_BSP
     if(sUseExtendedImpls) {
         return new ExSurfaceFlinger();
     } else {
@@ -83,6 +86,7 @@ SurfaceFlinger* DisplayUtils::getSFInstance() {
 Layer* DisplayUtils::getLayerInstance(SurfaceFlinger* flinger,
                             const sp<Client>& client, const String8& name,
                             uint32_t w, uint32_t h, uint32_t flags) {
+#ifdef QTI_BSP
     if(sUseExtendedImpls) {
         return new ExLayer(flinger, client, name, w, h, flags);
     } else {
@@ -93,12 +97,19 @@ Layer* DisplayUtils::getLayerInstance(SurfaceFlinger* flinger,
 #ifndef USE_HWC2
 HWComposer* DisplayUtils::getHWCInstance(
                         const sp<SurfaceFlinger>& flinger,
-                        HWComposer::EventHandler& handler) {
+                        HWComposer::EventHandler& handler ) {
+#ifdef QTI_BSP
     if(sUseExtendedImpls) {
         return new ExHWComposer(flinger, handler);
     } else {
         return new HWComposer(flinger,handler);
     }
+#endif
+
+#ifdef USE_HWC2
+    (void)handler;
+    return new HWComposer(flinger);
+    return new HWComposer(flinger,handler);
 }
 #else
 HWComposer* DisplayUtils::getHWCInstance(
@@ -117,6 +128,8 @@ void DisplayUtils::initVDSInstance(HWComposer* hwc, int32_t hwcDisplayId,
         sp<IGraphicBufferConsumer> bqConsumer, String8 currentStateDisplayName,
         bool currentStateIsSecure, int currentStateType)
 {
+
+#ifdef QTI_BSP
     if(sUseExtendedImpls) {
         if(hwc->isVDSEnabled()) {
             VirtualDisplaySurface* vds = new ExVirtualDisplaySurface(*hwc, hwcDisplayId,
@@ -136,6 +149,7 @@ void DisplayUtils::initVDSInstance(HWComposer* hwc, int32_t hwcDisplayId,
                 currentStateSurface, bqProducer, bqConsumer, currentStateDisplayName);
         dispSurface = vds;
         producer = vds;
+#ifdef QTI_BSP
     }
 }
 
@@ -187,6 +201,7 @@ bool DisplayUtils::canAllocateHwcDisplayIdForVDS(int usage) {
     int allowHwcForVDS = atoi(value);
 
 #if QTI_BSP
+#ifdef QTI_BSP
     // Do not allow hardware acceleration
     flag_mask = GRALLOC_USAGE_PRIVATE_WFD;
 #endif
